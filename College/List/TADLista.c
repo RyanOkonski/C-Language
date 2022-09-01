@@ -149,7 +149,7 @@ void Imprimir(Usuario *lista){
 
 int Busca(Usuario* lista){
    Usuario *aux;
-   char nome[20];
+   const nome[20];
    aux = lista;
 
    printf("Digite o nome do usuario a ser encontrado: ");
@@ -173,7 +173,7 @@ int Busca(Usuario* lista){
 
 int Remover(Usuario* lista){
    Usuario *anterior, *atual;
-   char name[20];
+   const name[20];
    anterior = lista;
    atual = lista;
 
