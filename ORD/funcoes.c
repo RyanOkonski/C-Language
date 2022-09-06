@@ -4,6 +4,9 @@
 
 #define TAM_MAX_REG 64
 #define DELIM_STR "|"
+#define DELIM_LINE "\n"
+#define TRUE 1
+#define FALSE 0
 
 void importar(char *argv);
 void le_reg_e_mostra(FILE *entrada, int *rrn);
@@ -45,8 +48,10 @@ void importar(char *argv)
 int executar_operacoes(char *argv)
 {
    FILE *entrada;
-   int rrn = 0, byte_offset, num;
-   char buffer[TAM_MAX_REG + 1];
+   int rrn = 0, byte_offset = 0;
+   int comp_reg, achou, num;
+   char buffer[TAM_MAX_REG];
+   int *enc;
    char op;
 
    printf("Digite: ");
@@ -66,11 +71,13 @@ int executar_operacoes(char *argv)
    switch (op)
    {
    case 'b':
-      rrn = num;
-      byte_offset = (rrn - 1) * TAM_MAX_REG;
-      fseek(entrada, byte_offset, SEEK_SET);
-      le_reg_e_mostra(entrada, &rrn);
-      rewind(entrada);
+      while (!achou && fgets(buffer, TAM_MAX_REG, entrada) != NULL){
+         enc = strtok(buffer, DELIM_STR);
+         if (num == enc){
+            achou = TRUE;
+            printf("%d", enc);
+         }
+      }
       break;
 
    default:
