@@ -14,8 +14,8 @@ int main(int argc, char *argv[])
    else if (argc == 3 && strcmp(argv[1], "-e") == 0)
    {
 
-      printf("Modo de execucao de operacoes ativado ... nome do arquivo = %s\n", argv[2]);
-      executar_operacoes(argv[2], argc);
+      printf("Modo de execucao de operacoes ativado ... nome do arquivo = [%s]\n", argv[2]);
+      executar_operacoes(argv[2]);
    }
    else if (argc == 2 && strcmp(argv[1], "-p") == 0)
    {

@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define TAM_MAX_REG 82
+#define TAM_MAX_REG 120
 #define DELIM_STR "|"
 #define DELIM_LINE "\n"
 #define TAM_STR 30
@@ -10,11 +10,15 @@
 #define FALSE 0
 
 void importar(char *argv);
-int executar_operacoes(char *argv, int argc);
+int executar_operacoes(char *argv);
 void concatena_campo(char *buffer, char *campo);
 void le_reg_e_mostra(FILE *entrada, int *rrn);
 short leia_reg(char *buffer, int tam, FILE *arq);
 int input(char *str, int size);
+int buscaReg(char *busca, FILE *entrada);
+int buscaRemocao(char *busca, FILE *entrada);
+int atualizaLed(int posicao);
+int topoLed();
 
 void importar(char *argv)
 {
@@ -50,44 +54,48 @@ void importar(char *argv)
    fclose(saida);
 }
 
-int executar_operacoes(char *argv, int argc)
+int executar_operacoes(char *argv)
 {
-   FILE *entrada;
+   FILE *dados, *operacao;
    int rrn = 0, byte_offset = 4;
    short comp_reg, achou, compr = 2;
-   char buffer[TAM_MAX_REG];
-   char *campo;
+   char buffer[TAM_MAX_REG], *campo, busca[3], op;
 
-   entrada = fopen(argv, "rb");
-   if ((entrada = fopen(argv, "rb")) == NULL)
+   if ((operacao = fopen(argv, "r")) == NULL)
    {
       printf("Erro na abertura do arquivo --- programa abortado\n");
       exit(EXIT_FAILURE);
    }
 
-   fseek(entrada, byte_offset, SEEK_SET);
-   achou = FALSE;
-   comp_reg = leia_reg(buffer, TAM_MAX_REG, entrada);
-   while (!achou && comp_reg > 0)
+   if ((dados = fopen("dados.dat", "rb+")) == NULL)
    {
-      campo = strtok(buffer, DELIM_STR);
-      rrn = atoi(campo);
-      if (argc == rrn)
+      printf("Erro na abertura do arquivo --- programa abortado\n");
+      exit(EXIT_FAILURE);
+   }
+
+   fseek(dados, byte_offset, SEEK_SET);
+   while (!feof(operacao))
+   {
+      op = fgetc(operacao);
+      if (op == 'b')
       {
-         printf("\nSEEK = %d\n", ftell(entrada));
-         achou = TRUE;
+         fgetc(operacao);
+         fgets(busca, 4, operacao);
+         printf("\nBusca pelo registro de chave [%s]: \n", busca);
+         buscaReg(busca, dados);
+         rewind(dados);
       }
-      else
+      if (op == 'r')
       {
-         printf("\nSEEK = %d\n", ftell(entrada));
-         comp_reg = leia_reg(buffer, TAM_MAX_REG, entrada);
-      }
-      if (achou)
-      {
-         //le_reg_e_mostra(entrada, &rrn);
+         fgetc(operacao);
+         fgets(busca, 4, operacao);
+         printf("\nRemocao do registro de chave: %s \n", busca);
+         buscaRemocao(busca, dados);
+         rewind(dados);
       }
    }
-   fclose(entrada);
+   fclose(dados);
+   fclose(operacao);
    return 0;
 }
 
@@ -123,7 +131,6 @@ short leia_reg(char *buffer, int tam, FILE *arq)
       return 0;
    }
 
-   printf("Cpm = %d", comp_reg);
    if (comp_reg < tam)
    {
       comp_reg = fread(buffer, sizeof(char), comp_reg, arq);
@@ -152,4 +159,95 @@ int input(char *str, int size)
    }
    str[i] = '\0';
    return i;
+}
+
+int buscaReg(char *busca, FILE *entrada)
+{
+   char *ind, *campo;
+   char buffer[TAM_MAX_REG];
+   short tamreg;
+   int achou = FALSE;
+
+   while (fread(&tamreg, sizeof(tamreg), 1, entrada) > 0)
+   {
+      fread(buffer, sizeof(char), tamreg, entrada);
+      ind = strtok(buffer, "|");
+      if (strcmp(ind, busca) == 0)
+      {
+         achou = TRUE;
+         fseek(entrada, -tamreg, SEEK_CUR);
+         fgets(buffer, tamreg, entrada);
+         campo = strtok(buffer, DELIM_STR);
+         while (campo != NULL)
+         {
+            printf("%s|", campo);
+            campo = strtok(NULL, DELIM_STR);
+         }
+         printf(" (%d bytes)\n", tamreg);
+      }
+      fseek(entrada, 1, SEEK_CUR);
+   }
+   if(!achou){
+      printf("Erro: registro nao encontrado!\n");
+   }
+}
+
+int buscaRemocao(char *busca, FILE *entrada)
+{
+   char *ind, *campo;
+   char buffer[TAM_MAX_REG];
+   short tamreg;
+   int achou = FALSE, jump, topo;
+   topo = topoLed();
+
+   while (fread(&tamreg, sizeof(tamreg), 1, entrada) > 0)
+   {
+      fread(buffer, sizeof(char), tamreg, entrada);
+      ind = strtok(buffer, "|");
+      if (strcmp(ind, busca) == 0)
+      {
+         printf("Registro removido! (%d bytes)\n", tamreg);
+         printf("Local: offset = %d bytes (%x)\n", ftell(entrada), ftell(entrada));
+         jump = tamreg;
+         fseek(entrada, -jump, SEEK_CUR);
+         fputc('*', entrada);
+         fwrite(&topo, sizeof(int), 1, entrada);
+         atualizaLed(tamreg);
+      }
+      fseek(entrada, 1, SEEK_CUR);
+   }
+   if(!achou){
+      printf("Erro: registro nao encontrado!\n");
+   }
+}
+
+int atualizaLed(int comprimentoReg)
+{
+   FILE *arquivoCopia;
+   int cabeca;
+
+   arquivoCopia = fopen("dados.dat", "rb+");
+   fread(&cabeca, sizeof(int), 1, arquivoCopia);
+
+   if (cabeca != comprimentoReg)
+   {
+      cabeca = comprimentoReg;
+      fseek(arquivoCopia, 0, SEEK_SET);
+      fwrite(&cabeca, sizeof(int), 1 ,arquivoCopia);  
+   }
+
+   fclose(arquivoCopia);
+   return cabeca;
+}
+
+int topoLed()
+{
+   FILE *arquivoCopia;
+   int topoLed;
+
+   arquivoCopia = fopen("dados.dat", "rb+");
+   fread(&topoLed, sizeof(int), 1, arquivoCopia);
+
+   fclose(arquivoCopia);
+   return topoLed;
 }
