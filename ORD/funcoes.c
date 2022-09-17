@@ -11,9 +11,6 @@
 
 void importar(char *argv);
 int executar_operacoes(char *argv);
-void concatena_campo(char *buffer, char *campo);
-void le_reg_e_mostra(FILE *entrada, int *rrn);
-short leia_reg(char *buffer, int tam, FILE *arq);
 int input(char *str, int size);
 int buscaReg(char *busca, FILE *entrada);
 int buscaRemocao(char *busca, FILE *entrada);
@@ -97,51 +94,6 @@ int executar_operacoes(char *argv)
    fclose(dados);
    fclose(operacao);
    return 0;
-}
-
-void concatena_campo(char *buffer, char *campo)
-{
-   strcat(buffer, campo);
-   strcat(buffer, DELIM_STR);
-}
-
-void le_reg_e_mostra(FILE *entrada, int *rrn)
-{
-   char buffer[TAM_MAX_REG + 1];
-   char *campo;
-
-   fread(buffer, sizeof(char), TAM_MAX_REG, entrada);
-   buffer[TAM_MAX_REG] = '\0';
-
-   printf("\nBusca pelo registro de chave [%d]\n", *rrn);
-   campo = strtok(buffer, DELIM_STR);
-   while (campo != NULL)
-   {
-      printf("%s|", campo);
-      campo = strtok(NULL, DELIM_STR);
-   }
-}
-
-short leia_reg(char *buffer, int tam, FILE *arq)
-{
-   short comp_reg;
-
-   if (fread(&comp_reg, sizeof(comp_reg), 1, arq) == 0)
-   {
-      return 0;
-   }
-
-   if (comp_reg < tam)
-   {
-      comp_reg = fread(buffer, sizeof(char), comp_reg, arq);
-      buffer[comp_reg] = '\0';
-      return comp_reg;
-   }
-   else
-   {
-      printf("Buffer overflow\n");
-      return 0;
-   }
 }
 
 int input(char *str, int size)
