@@ -16,6 +16,7 @@ int buscaReg(char *busca, FILE *entrada);
 int buscaRemocao(char *busca, FILE *entrada);
 int atualizaLed(int posicao);
 int topoLed();
+void impressaoLed();
 
 void importar(char *argv)
 {
@@ -76,7 +77,7 @@ int executar_operacoes(char *argv)
       op = fgetc(operacao);
       if (op == 'b')
       {
-         fgetc(operacao);
+         fseek(dados, sizeof(char), SEEK_CUR);
          fgets(busca, 4, operacao);
          printf("\nBusca pelo registro de chave [%s]: \n", busca);
          buscaReg(busca, dados);
@@ -84,7 +85,7 @@ int executar_operacoes(char *argv)
       }
       if (op == 'r')
       {
-         fgetc(operacao);
+         fseek(dados, sizeof(char), SEEK_CUR);
          fgets(busca, 4, operacao);
          printf("\nRemocao do registro de chave: %s \n", busca);
          buscaRemocao(busca, dados);
@@ -139,7 +140,8 @@ int buscaReg(char *busca, FILE *entrada)
       }
       fseek(entrada, 1, SEEK_CUR);
    }
-   if(!achou){
+   if (!achou)
+   {
       printf("Erro: registro nao encontrado!\n");
    }
 }
@@ -158,17 +160,18 @@ int buscaRemocao(char *busca, FILE *entrada)
       ind = strtok(buffer, "|");
       if (strcmp(ind, busca) == 0)
       {
-         printf("Registro removido! (%d bytes)\n", tamreg);
-         printf("Local: offset = %d bytes (%x)\n", ftell(entrada), ftell(entrada));
          jump = tamreg;
          fseek(entrada, -jump, SEEK_CUR);
+         printf("Registro removido! (%d bytes)\n", tamreg);
+         printf("Local: offset = %d bytes", ftell(entrada));
+         atualizaLed(ftell(entrada));
          fputc('*', entrada);
          fwrite(&topo, sizeof(int), 1, entrada);
-         atualizaLed(tamreg);
       }
       fseek(entrada, 1, SEEK_CUR);
    }
-   if(!achou){
+   if (!achou)
+   {
       printf("Erro: registro nao encontrado!\n");
    }
 }
@@ -185,7 +188,7 @@ int atualizaLed(int comprimentoReg)
    {
       cabeca = comprimentoReg;
       fseek(arquivoCopia, 0, SEEK_SET);
-      fwrite(&cabeca, sizeof(int), 1 ,arquivoCopia);  
+      fwrite(&cabeca, sizeof(int), 1, arquivoCopia);
    }
 
    fclose(arquivoCopia);
@@ -202,4 +205,46 @@ int topoLed()
 
    fclose(arquivoCopia);
    return topoLed;
+}
+
+void impressaoLed()
+{
+   FILE *arquivoCopia;
+   int sizeVetor = 1;
+   int offset;
+
+   if ((arquivoCopia = fopen("dados.dat", "rb+")) == NULL)
+   {
+      printf("Erro na abertura do arquivo --- programa abortado\n");
+      exit(EXIT_FAILURE);
+   }
+
+   fread(&offset, sizeof(int), 1, arquivoCopia);
+   while (offset != -1)
+   {
+      sizeVetor++;
+      fseek(arquivoCopia, (offset + 1), SEEK_SET);
+      fread(&offset, sizeof(int), 1, arquivoCopia);
+   }
+   rewind(arquivoCopia);
+
+   int vetorOffset[sizeVetor], indexV = 0;
+   fread(&offset, sizeof(int), 1, arquivoCopia);
+   vetorOffset[0] = offset;
+
+   while (offset != -1)
+   {
+      indexV++;
+      fseek(arquivoCopia, (offset + 1), SEEK_SET);
+      fread(&offset, sizeof(int), 1, arquivoCopia);
+      vetorOffset[indexV] = offset;
+   }
+   vetorOffset[sizeVetor] = -1;
+
+   for (int i = 0; i < sizeVetor; i++)
+   {
+      printf("Offsets[%d] = %d bytes\n", i, vetorOffset[i]);
+   }
+
+   fclose(arquivoCopia);
 }

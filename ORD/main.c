@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
    {
 
       printf("Modo de impressao da LED ativado ...\n");
-      // imprimir_led();
+      impressaoLed();
    }
    else
    {
