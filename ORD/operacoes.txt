@@ -1,2 +1,1 @@
-r 5
-b 17
+i 181|Pac-Man|1980|Maze|Namco|Arcade|

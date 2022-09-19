@@ -10,13 +10,14 @@
 #define FALSE 0
 
 void importar(char *argv);
+void impressaoLed();
+int topoLed();
 int executar_operacoes(char *argv);
 int input(char *str, int size);
 int buscaReg(char *busca, FILE *entrada);
 int buscaRemocao(char *busca, FILE *entrada);
 int atualizaLed(int posicao);
-int topoLed();
-void impressaoLed();
+int insercaoReg(char *novoReg, FILE *entrada);
 
 void importar(char *argv)
 {
@@ -56,7 +57,7 @@ int executar_operacoes(char *argv)
 {
    FILE *dados, *operacao;
    int rrn = 0, byte_offset = 4;
-   short comp_reg, achou, compr = 2;
+   short comp_reg, achou, compr = 2, tamreg;
    char buffer[TAM_MAX_REG], *campo, busca[3], op;
 
    if ((operacao = fopen(argv, "r")) == NULL)
@@ -77,7 +78,7 @@ int executar_operacoes(char *argv)
       op = fgetc(operacao);
       if (op == 'b')
       {
-         fseek(dados, sizeof(char), SEEK_CUR);
+         fgetc(operacao);
          fgets(busca, 4, operacao);
          printf("\nBusca pelo registro de chave [%s]: \n", busca);
          buscaReg(busca, dados);
@@ -85,10 +86,17 @@ int executar_operacoes(char *argv)
       }
       if (op == 'r')
       {
-         fseek(dados, sizeof(char), SEEK_CUR);
+         fgetc(operacao);
          fgets(busca, 4, operacao);
          printf("\nRemocao do registro de chave: %s \n", busca);
          buscaRemocao(busca, dados);
+         rewind(dados);
+      }
+      if (op == 'i')
+      {
+         fgetc(operacao);
+         fgets(buffer, sizeof(buffer), operacao);
+         insercaoReg(buffer, dados);
          rewind(dados);
       }
    }
@@ -174,6 +182,49 @@ int buscaRemocao(char *busca, FILE *entrada)
    {
       printf("Erro: registro nao encontrado!\n");
    }
+}
+
+int insercaoReg(char *novoReg, FILE *entrada)
+{
+   entrada = fopen("dados.dat", "rb+");
+   short tamReg, compReg, calcReg;
+   int enderecoReg, calcLed;
+
+   tamReg = strlen(novoReg);
+   fread(&enderecoReg, sizeof(int), 1, entrada);
+
+   if (enderecoReg == -1)
+   {
+      fseek(entrada, 0, SEEK_END);
+      fputc('\n', entrada);   
+      fwrite(&tamReg, sizeof(tamReg), 1, entrada);
+      fputs(novoReg, entrada);
+      printf("Local: fim do arquivo\n");
+   }
+   else if (enderecoReg != -1)
+   {
+      calcLed = enderecoReg - sizeof(short);
+      fseek(entrada, calcLed, SEEK_SET);
+      fread(&compReg, sizeof(short), 1, entrada);
+      if (tamReg > compReg)
+      {
+         fseek(entrada, 0, SEEK_END);
+         fputc('\n', entrada);
+         fwrite(&tamReg, sizeof(tamReg), 1, entrada);
+         fputs(novoReg, entrada);
+         printf("Local: fim do arquivo\n");
+      }
+      else if (tamReg <= compReg)
+      {
+         printf("Tamanho do espaco reutilizado: %d bytes\n", compReg);
+         printf("Local: offset = %d bytes\n", ftell(entrada));
+         fseek(entrada, -sizeof(short), SEEK_CUR);
+         fwrite(&tamReg, sizeof(tamReg), 1, entrada);
+         fputs(novoReg, entrada);
+      }
+   }
+
+   fclose(entrada);
 }
 
 int atualizaLed(int comprimentoReg)
