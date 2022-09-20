@@ -130,6 +130,7 @@ int buscaReg(char *busca, FILE *entrada)
       fseek(entrada, 1, SEEK_CUR);
    }
    if(!achou){printf("Erro: registro nao encontrado!\n");}
+   return 0;
 }
 
 int buscaRemocao(char *busca, FILE *entrada)
@@ -149,7 +150,7 @@ int buscaRemocao(char *busca, FILE *entrada)
          jump = tamreg;
          fseek(entrada, -jump, SEEK_CUR);
          printf("Registro removido! (%d bytes)\n", tamreg);
-         printf("Local: offset = %d bytes", ftell(entrada));
+         printf("Local: offset = %ld bytes", ftell(entrada));
          atualizaLed(ftell(entrada));
          fputc('*', entrada);
          fwrite(&topo, sizeof(int), 1, entrada);
@@ -157,6 +158,7 @@ int buscaRemocao(char *busca, FILE *entrada)
       fseek(entrada, 1, SEEK_CUR);
    }
    printf("Erro: registro nao encontrado!\n");
+   return 0;
 }
 
 int insercaoReg(char *novoReg, FILE *entrada)
@@ -189,7 +191,7 @@ int insercaoReg(char *novoReg, FILE *entrada)
       else if (tamReg <= compReg)
       {
          printf("Tamanho do espaco reutilizado: %d bytes\n", compReg);
-         printf("Local: offset = %d bytes\n", ftell(entrada));
+         printf("Local: offset = %ld bytes\n", ftell(entrada));
          fseek(entrada, -sizeof(short), SEEK_CUR);
          fwrite(&tamReg, sizeof(tamReg), 1, entrada);
          fputs(novoReg, entrada);
@@ -197,6 +199,7 @@ int insercaoReg(char *novoReg, FILE *entrada)
    }
 
    fclose(entrada);
+   return 0;
 }
 
 int atualizaLed(int enderecoReg)
