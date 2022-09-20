@@ -10,14 +10,13 @@
 #define FALSE 0
 
 void importar(char *argv);
-void impressaoLed();
-int topoLed();
 int executar_operacoes(char *argv);
-int input(char *str, int size);
 int buscaReg(char *busca, FILE *entrada);
 int buscaRemocao(char *busca, FILE *entrada);
-int atualizaLed(int posicao);
 int insercaoReg(char *novoReg, FILE *entrada);
+int atualizaLed(int enderecoReg);
+int topoLed();
+void impressaoLed();
 
 void importar(char *argv)
 {
@@ -56,9 +55,8 @@ void importar(char *argv)
 int executar_operacoes(char *argv)
 {
    FILE *dados, *operacao;
-   int rrn = 0, byte_offset = 4;
-   short comp_reg, achou, compr = 2, tamreg;
-   char buffer[TAM_MAX_REG], *campo, busca[3], op;
+   int byte_offset = 4;
+   char buffer[TAM_MAX_REG], busca[3], op, *ind;
 
    if ((operacao = fopen(argv, "r")) == NULL)
    {
@@ -82,7 +80,7 @@ int executar_operacoes(char *argv)
          fgets(busca, 4, operacao);
          printf("\nBusca pelo registro de chave [%s]: \n", busca);
          buscaReg(busca, dados);
-         rewind(dados);
+         fseek(dados, byte_offset, SEEK_SET);
       }
       if (op == 'r')
       {
@@ -90,14 +88,15 @@ int executar_operacoes(char *argv)
          fgets(busca, 4, operacao);
          printf("\nRemocao do registro de chave: %s \n", busca);
          buscaRemocao(busca, dados);
-         rewind(dados);
+         fseek(dados, byte_offset, SEEK_SET);
       }
       if (op == 'i')
       {
          fgetc(operacao);
          fgets(buffer, sizeof(buffer), operacao);
+         printf("\nInsercao do registro!\n");
          insercaoReg(buffer, dados);
-         rewind(dados);
+         fseek(dados, byte_offset, SEEK_SET);
       }
    }
    fclose(dados);
@@ -105,29 +104,11 @@ int executar_operacoes(char *argv)
    return 0;
 }
 
-int input(char *str, int size)
-{
-   int i = 0;
-   char c = getchar();
-   while (c != '\n')
-   {
-      if (i < size - 1)
-      {
-         str[i] = c;
-         i++;
-      }
-      c = getchar();
-   }
-   str[i] = '\0';
-   return i;
-}
-
 int buscaReg(char *busca, FILE *entrada)
 {
    char *ind, *campo;
    char buffer[TAM_MAX_REG];
-   short tamreg;
-   int achou = FALSE;
+   short tamreg, achou = FALSE;
 
    while (fread(&tamreg, sizeof(tamreg), 1, entrada) > 0)
    {
@@ -148,20 +129,17 @@ int buscaReg(char *busca, FILE *entrada)
       }
       fseek(entrada, 1, SEEK_CUR);
    }
-   if (!achou)
-   {
-      printf("Erro: registro nao encontrado!\n");
-   }
+   if(!achou){printf("Erro: registro nao encontrado!\n");}
 }
 
 int buscaRemocao(char *busca, FILE *entrada)
 {
-   char *ind, *campo;
+   char *ind;
    char buffer[TAM_MAX_REG];
    short tamreg;
-   int achou = FALSE, jump, topo;
-   topo = topoLed();
+   int jump, topo;
 
+   topo = topoLed();
    while (fread(&tamreg, sizeof(tamreg), 1, entrada) > 0)
    {
       fread(buffer, sizeof(char), tamreg, entrada);
@@ -178,25 +156,20 @@ int buscaRemocao(char *busca, FILE *entrada)
       }
       fseek(entrada, 1, SEEK_CUR);
    }
-   if (!achou)
-   {
-      printf("Erro: registro nao encontrado!\n");
-   }
+   printf("Erro: registro nao encontrado!\n");
 }
 
 int insercaoReg(char *novoReg, FILE *entrada)
 {
    entrada = fopen("dados.dat", "rb+");
-   short tamReg, compReg, calcReg;
+   short tamReg, compReg;
    int enderecoReg, calcLed;
 
    tamReg = strlen(novoReg);
    fread(&enderecoReg, sizeof(int), 1, entrada);
-
    if (enderecoReg == -1)
    {
       fseek(entrada, 0, SEEK_END);
-      fputc('\n', entrada);   
       fwrite(&tamReg, sizeof(tamReg), 1, entrada);
       fputs(novoReg, entrada);
       printf("Local: fim do arquivo\n");
@@ -209,7 +182,6 @@ int insercaoReg(char *novoReg, FILE *entrada)
       if (tamReg > compReg)
       {
          fseek(entrada, 0, SEEK_END);
-         fputc('\n', entrada);
          fwrite(&tamReg, sizeof(tamReg), 1, entrada);
          fputs(novoReg, entrada);
          printf("Local: fim do arquivo\n");
@@ -227,7 +199,7 @@ int insercaoReg(char *novoReg, FILE *entrada)
    fclose(entrada);
 }
 
-int atualizaLed(int comprimentoReg)
+int atualizaLed(int enderecoReg)
 {
    FILE *arquivoCopia;
    int cabeca;
@@ -235,9 +207,9 @@ int atualizaLed(int comprimentoReg)
    arquivoCopia = fopen("dados.dat", "rb+");
    fread(&cabeca, sizeof(int), 1, arquivoCopia);
 
-   if (cabeca != comprimentoReg)
+   if (cabeca != enderecoReg)
    {
-      cabeca = comprimentoReg;
+      cabeca = enderecoReg;
       fseek(arquivoCopia, 0, SEEK_SET);
       fwrite(&cabeca, sizeof(int), 1, arquivoCopia);
    }

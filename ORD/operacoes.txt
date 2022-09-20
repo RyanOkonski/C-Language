@@ -1,1 +1,1 @@
-i 181|Pac-Man|1980|Maze|Namco|Arcade|
+i 144|The Sims|2000|Life simulation|Electronic Arts|PC|
